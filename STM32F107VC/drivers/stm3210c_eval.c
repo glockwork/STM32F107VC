@@ -314,8 +314,9 @@ void STM_EVAL_COMInit(COM_TypeDef COM, USART_InitTypeDef* USART_InitStruct)
   if (COM == COM1)
   {
     /* Enable the USART2 Pins Software Remapping */
-    GPIO_PinRemapConfig(GPIO_Remap_USART2, ENABLE);
-    RCC_APB1PeriphClockCmd(COM_USART_CLK[COM], ENABLE);
+//    GPIO_PinRemapConfig(GPIO_Remap_USART2, ENABLE);
+//    RCC_APB1PeriphClockCmd(COM_USART_CLK[COM], ENABLE);
+      RCC_APB2PeriphClockCmd(COM_USART_CLK[COM], ENABLE);
   }
 
   /* Configure USART Tx as alternate function push-pull */
@@ -330,10 +331,10 @@ void STM_EVAL_COMInit(COM_TypeDef COM, USART_InitTypeDef* USART_InitStruct)
   GPIO_Init(COM_RX_PORT[COM], &GPIO_InitStructure);
 
   /* USART configuration */
-  USART_Init(COM_USART[COM], USART_InitStruct);
+  USART_Init(USART1, USART_InitStruct);
     
   /* Enable USART */
-  USART_Cmd(COM_USART[COM], ENABLE);
+  USART_Cmd(USART1, ENABLE);
 }
 
 /**

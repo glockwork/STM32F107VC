@@ -27,12 +27,15 @@
 #include "stm32f10x.h"
 
 /******************************* Define for CC1120 ****************************/
+#define CC1120_SPI                  SPI1
 #define GPIO_Port_CC1120_SPI        GPIOA
 #define GPIO_Port_CC1120_NSS        GPIOA
+#define GPIO_Port_CC1120_RESET      GPIOC
 #define GPIO_Pin_CC1120_SCK         GPIO_Pin_5
 #define GPIO_Pin_CC1120_MOSI        GPIO_Pin_6
 #define GPIO_Pin_CC1120_MISO        GPIO_Pin_7
 #define GPIO_Pin_CC1120_NSS         GPIO_Pin_4
+#define GPIO_Pin_CC1120_RESET       GPIO_Pin_9
 
 #endif /* __BOARD_H */
 /******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/

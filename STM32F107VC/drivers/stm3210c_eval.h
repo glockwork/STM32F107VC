@@ -134,15 +134,25 @@
 /**
  * @brief Definition for COM port1, connected to USART2 (USART2 pins remapped on GPIOD)
  */ 
-#define EVAL_COM1                        USART2
-#define EVAL_COM1_CLK                    RCC_APB1Periph_USART2
-#define EVAL_COM1_TX_PIN                 GPIO_Pin_5
-#define EVAL_COM1_TX_GPIO_PORT           GPIOD
-#define EVAL_COM1_TX_GPIO_CLK            RCC_APB2Periph_GPIOD
-#define EVAL_COM1_RX_PIN                 GPIO_Pin_6
-#define EVAL_COM1_RX_GPIO_PORT           GPIOD
-#define EVAL_COM1_RX_GPIO_CLK            RCC_APB2Periph_GPIOD
-#define EVAL_COM1_IRQn                   USART2_IRQn
+//#define EVAL_COM1                        USART2
+//#define EVAL_COM1_CLK                    RCC_APB1Periph_USART2
+//#define EVAL_COM1_TX_PIN                 GPIO_Pin_5
+//#define EVAL_COM1_TX_GPIO_PORT           GPIOD
+//#define EVAL_COM1_TX_GPIO_CLK            RCC_APB2Periph_GPIOD
+//#define EVAL_COM1_RX_PIN                 GPIO_Pin_6
+//#define EVAL_COM1_RX_GPIO_PORT           GPIOD
+//#define EVAL_COM1_RX_GPIO_CLK            RCC_APB2Periph_GPIOD
+//#define EVAL_COM1_IRQn                   USART2_IRQn
+
+#define EVAL_COM1                        USART1
+#define EVAL_COM1_CLK                    RCC_APB2Periph_USART1
+#define EVAL_COM1_TX_PIN                 GPIO_Pin_9
+#define EVAL_COM1_TX_GPIO_PORT           GPIOA
+#define EVAL_COM1_TX_GPIO_CLK            RCC_APB2Periph_GPIOA
+#define EVAL_COM1_RX_PIN                 GPIO_Pin_10
+#define EVAL_COM1_RX_GPIO_PORT           GPIOA
+#define EVAL_COM1_RX_GPIO_CLK            RCC_APB2Periph_GPIOA
+#define EVAL_COM1_IRQn                   USART1_IRQn
 
 /**
   * @}

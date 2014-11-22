@@ -52,6 +52,7 @@
 #include "cc1120_sniff_mode.h"
 #include "stm32f10x_spi.h"
 #include "delay.h"
+#include <stdio.h>
 
 /*******************************************************************************
 * LOCAL VARIABLES
@@ -70,32 +71,28 @@ uint8_t ReadDataFromRadio(uint8_t *rxBuffer);
 
 void rf_PowerUpReset(void)
 {
-    SPI_Cmd(SPI1, ENABLE);
-    
-    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);    // Pulse CSn low then high 
-    Delay10us(2); 								        // Delay 20us 
-    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);      // Pulse CSn high 
-    Delay10us(6); 								        // Delay 60us 
+#ifdef CC1120_DEBUG
+    printf("rf_PowerUpReset...\r\n");
+#endif 
+    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);    // Pulse CSn low then high 
+    delay_us(20); 								        // Delay 20us 
+    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);      // Pulse CSn high 
+    delay_us(60); 								        // Delay 60us 
     
 	// pull CSn low and wait for SO to go low 
     /* Pull CS_N low and wait for SO to go low before communication starts */
-    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);       // CS = 0
+    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);       // CS = 0
     while((GPIO_ReadInputDataBit(GPIO_Port_CC1120_SPI, GPIO_Pin_CC1120_MISO) & Bit_SET));
     
     cc112xSpiWriteReg(0x00, 0x00,1); 							// SPI写字节，不是写命令子程序 
     
     // wait for SO to go low again, reset is complete at that point 
     while((GPIO_ReadInputDataBit(GPIO_Port_CC1120_SPI, GPIO_Pin_CC1120_MISO) & Bit_SET));
-    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);       // Pulse CSn high
-    SPI_Cmd(SPI1, DISABLE);
+    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);       // Pulse CSn high
 }
 
 void SendPacketByRF(uint8_t *u8pData,uint8_t u8Len) 
 {
-    /*P1IES  |= BIT4;	// The P1IFGx flag is set with a 
-			// high-to-low transition
-    P1IFG  &= 0x00;	// The P1IFGx flag is cleared
-    P1IE   |= BIT4;	// Enable P1.4,5,6 interrupt*/
     uint8_t marcstate;
 	// Write packet to TX FIFO
     trxSpiCmdStrobe(CC112X_SFTX);
@@ -106,7 +103,7 @@ void SendPacketByRF(uint8_t *u8pData,uint8_t u8Len)
 	// Wait for interrupt that packet has been sent. 
 	// (Assumes the GPIO connected to the radioRxTxISR function is set 
 	// to GPIOx_CFG = 0x06)
-   // while(TXpacketSemaphore != ISR_ACTION_REQUIRED);
+    // while(TXpacketSemaphore != ISR_ACTION_REQUIRED);
     do {
         cc112xSpiReadReg(CC112X_MARCSTATE, &marcstate, 1);
     } while (marcstate != 0x41);
@@ -181,9 +178,11 @@ void registerConfig(void)
     for(i = 0;i < (sizeof(preferredSettings)/sizeof(registerSetting_t)); i++) 
 	{
         writeByte = preferredSettings[i].data;
+printf("registerConfiging,%d...\r\n",i);       
         cc112xSpiWriteReg(preferredSettings[i].addr, &writeByte, 1);
+        delay_us(1000);
     }
-	
+
 	// Calibrate radio according to errata
     manualCalibration();
 }

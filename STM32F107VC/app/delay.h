@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
-void Delay10us(uint16_t len);
+void delay_init(void);
+void delay_us(uint16_t us);
+void delay_ms(uint16_t ms);
 
 #endif      /* _DELAY_H_ */

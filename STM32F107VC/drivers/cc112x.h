@@ -290,7 +290,6 @@ typedef struct
     uint16_t  addr;
     uint8_t   data;
 }registerSetting_t;
-
  
 typedef uint8_t rfStatus_t;
 
@@ -309,7 +308,9 @@ rfStatus_t cc112xSpiReadRxFifo(uint8_t *pReadData, uint8_t len);
 // added by Roger
 rfStatus_t cc112xSpiReadTxFifo(uint8_t * pData, uint8_t len);
 void CC1120_SPI_Configuration(void);
+void CC1120_Init(void);
 uint8_t CC1120_SPIReadWriteByte(SPI_TypeDef* SPIx,uint8_t temp);
 rfStatus_t trxSpiCmdStrobe(uint8_t cmd);
+rfStatus_t trx8BitRegAccess(uint8_t accessType, uint8_t addrByte, uint8_t *pData, uint8_t len);
 
 #endif// CC112x_SPI_H

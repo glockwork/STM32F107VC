@@ -25,14 +25,12 @@
 #include <stdio.h>
 #include "board.h"
 #include "cc112x.h"
+#include "delay.h"
 #include "cc1120_sniff_mode.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
- USART_InitTypeDef USART_InitStructure;
-
-
 /* Private functions ---------------------------------------------------------*/
 
 /**
@@ -42,34 +40,29 @@
   */
 int main(void)
 {
-    uint8_t wr_temp = 5;
+    uint8_t wr_temp = 20;
     uint8_t rd_temp = 0;
-    /*!< At this stage the microcontroller clock setting is already configured, 
-    this is done through SystemInit() function which is called from startup
-    file (startup_stm32f10x_xx.s) before to branch to application main.
-    To reconfigure the default setting of SystemInit() function, refer to
-    system_stm32f10x.c file
-    */     
+    
+    /* Initialize COM port(USART) available onboard */     
     EVAL_USART_Init();
-    
-    CC1120_SPI_Configuration();
-    
-    rf_PowerUpReset();
-    /* Initialize LEDs, Key Button, LCD and COM port(USART) available on
-     STM3210X-EVAL board ******************************************************/
-    STM_EVAL_LEDInit(LED1);
-    STM_EVAL_LEDInit(LED2);
 
-    /* Turn on leds available on STM3210X-EVAL **********************************/
-    STM_EVAL_LEDOn(LED1);
-    STM_EVAL_LEDOn(LED2);
+    delay_init();
     printf("Hello!I am STM32107VC...\r\n");
+    
+    CC1120_Init();
+    GPIO_ResetBits(GPIO_Port_CC1120_RESET, GPIO_Pin_CC1120_RESET);
+    delay_ms(1);
+    GPIO_SetBits(GPIO_Port_CC1120_RESET, GPIO_Pin_CC1120_RESET);
+    rf_PowerUpReset();
+    registerConfig();
     /* Infinite loop */
     while (1)
     {
-        
+//        printf("Hello!I am STM32107VC...\r\n");
         cc112xSpiWriteReg(CC112X_PKT_LEN, &wr_temp, 1);
+        delay_ms(5);
         cc112xSpiReadReg(CC112X_PKT_LEN, &rd_temp, 1);
+        delay_ms(5);
         printf("rd_temp = %d...\r\n",rd_temp);
     }
 }

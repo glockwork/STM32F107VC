@@ -41,10 +41,34 @@
 #include "cc112x.h"
 #include "board.h"
 #include "stm32f10x_spi.h"
+#include "stdio.h"
 
 /******************************************************************************
  * FUNCTIONS
  */
+ /*******************************************************************************
+* @brief  Initializes CC1120
+* @param  void
+* @retval void
+*******************************************************************************/
+void CC1120_Init(void)
+{
+    GPIO_InitTypeDef    GPIO_InitStructure;
+     
+    /* Enable SPI SCK, MOSI, MISO and NSS GPIO PB12 PB13 PB14 PB15 clocks */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC,ENABLE);
+
+    /* SPI NSS pin configuration */
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_CC1120_RESET;
+    GPIO_Init(GPIO_Port_CC1120_RESET, &GPIO_InitStructure);
+#ifdef CC1120_DEBUG
+        printf("CC1120_SPI_Configuration OK.\r\n");
+#endif
+    CC1120_SPI_Configuration();
+}
+
 /*******************************************************************************
 * @brief  Configure the SPI interface for CC1120
 * @param  void
@@ -63,44 +87,35 @@ void CC1120_SPI_Configuration(void)
     
     /* Enable the AFIO peripheral */
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-
+    
     /*  SPI pin config */
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
-
-    /* SPI SCK pin configuration */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_CC1120_SCK;
-    GPIO_Init(GPIO_Port_CC1120_SPI, &GPIO_InitStructure);
-
-    /* SPI MOSI pin configuration */
-    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_CC1120_MOSI;
-    GPIO_Init(GPIO_Port_CC1120_SPI, &GPIO_InitStructure);
-
-    /* SPI MISO pin configuration */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_CC1120_MISO;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_CC1120_SCK | GPIO_Pin_CC1120_MOSI | GPIO_Pin_CC1120_MISO;
     GPIO_Init(GPIO_Port_CC1120_SPI, &GPIO_InitStructure);
     
     /* SPI NSS pin configuration */
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_CC1120_NSS;
     GPIO_Init(GPIO_Port_CC1120_NSS, &GPIO_InitStructure);
-	GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);
 
      /* SPI configuration -------------------------------------------------------*/
-    SPI_I2S_DeInit(SPI1);
+    SPI_I2S_DeInit(CC1120_SPI);
     SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
     SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
     SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
     SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
     SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;   
     SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-    SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_8; // (8M/32 =250KHz)
+    SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_16; // (72m/32 =250KHz)
     SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
     SPI_InitStructure.SPI_CRCPolynomial = 7;
-    SPI_Init(SPI1, &SPI_InitStructure);
+    SPI_Init(CC1120_SPI, &SPI_InitStructure);
 
     /* Enable the SPI peripheral */
-    SPI_Cmd(SPI1, DISABLE);
+    SPI_Cmd(CC1120_SPI, ENABLE);
+    
+  
 }
 
 /*******************************************************************************
@@ -111,14 +126,30 @@ void CC1120_SPI_Configuration(void)
 *******************************************************************************/
 uint8_t CC1120_SPIReadWriteByte(SPI_TypeDef* SPIx,uint8_t temp)
 {
-	/* Loop while DR register in not emplty */
-    while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_TXE) == RESET);
-	
+    uint16_t wr_timeout = 1000,rd_timeout = 4000;
+
     /* Send byte through the SPIx peripheral */
     SPI_I2S_SendData(SPIx,temp);
+    
+	/* Loop while DR register in not emplty */
+    while ((SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_TXE) == RESET) && (--wr_timeout));
 	
+    if(!wr_timeout)
+    {
+#ifdef CC1120_DEBUG
+        printf("write timeout.\r\n");
+#endif    
+    }
+
     /* Wait to receive a byte */
-    while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_RXNE) == RESET);
+    while ((SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_RXNE) == RESET) && (--rd_timeout));
+    
+    if(!rd_timeout)
+    {
+#ifdef CC1120_DEBUG
+        printf("read timeout.\r\n");
+#endif    
+    }  
     
     /* Return the byte read from the SPI bus */
     return (SPI_I2S_ReceiveData(SPIx));
@@ -158,13 +189,13 @@ static void trxReadWriteBurstSingle(uint8_t addr,uint8_t *pData,uint16_t len)
             for (i = 0; i < len; i++)
             {   
                 /* Possible to combining read and write as one access type */
-                *pData = CC1120_SPIReadWriteByte(SPI1,0); 
+                *pData = CC1120_SPIReadWriteByte(CC1120_SPI,0);                 
                 pData++;
             }
         }
         else
         {
-            *pData = CC1120_SPIReadWriteByte(SPI1,0); 
+            *pData = CC1120_SPIReadWriteByte(CC1120_SPI,0); 
         }
     }
     else
@@ -174,13 +205,13 @@ static void trxReadWriteBurstSingle(uint8_t addr,uint8_t *pData,uint16_t len)
             /* Communicate len number of bytes: if TX - the procedure doesn't overwrite pData */
             for (i = 0; i < len; i++)
             {
-                CC1120_SPIReadWriteByte(SPI1,*pData); 
+                CC1120_SPIReadWriteByte(CC1120_SPI,*pData); 
                 pData++;
             }
         }
         else
         {
-            CC1120_SPIReadWriteByte(SPI1,*pData); 
+            CC1120_SPIReadWriteByte(CC1120_SPI,*pData); 
         }
     }
     
@@ -206,21 +237,27 @@ static void trxReadWriteBurstSingle(uint8_t addr,uint8_t *pData,uint16_t len)
 rfStatus_t trx8BitRegAccess(uint8_t accessType, uint8_t addrByte, uint8_t *pData, uint8_t len)
 {
     uint8_t readValue;
+    uint16_t timeout = 1000;
     
-    SPI_Cmd(SPI1, ENABLE);
+    SPI_Cmd(CC1120_SPI, ENABLE);
     
     /* Pull CS_N low and wait for SO to go low before communication starts */
-    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);       // CS = 0
-    while((GPIO_ReadInputDataBit(GPIO_Port_CC1120_SPI, GPIO_Pin_CC1120_MISO) & Bit_SET));
+    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);       // CS = 0
+    while((GPIO_ReadInputDataBit(GPIO_Port_CC1120_SPI, GPIO_Pin_CC1120_MISO) & Bit_SET) && (--timeout));
+    
+    if(!timeout)
+    {
+        printf("trx8BitRegAccess\r\n");
+    }
 
     /* send register address byte */
-    readValue = CC1120_SPIReadWriteByte(SPI1,accessType|addrByte);
+    readValue = CC1120_SPIReadWriteByte(CC1120_SPI,accessType|addrByte);
 
     trxReadWriteBurstSingle(accessType|addrByte,pData,len);
+
+    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);       // CS = 1
     
-    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);       // CS = 0
-    
-    SPI_Cmd(SPI1, DISABLE);
+    SPI_Cmd(CC1120_SPI, DISABLE);
     
     /* return the status byte value */
     return(readValue);
@@ -246,22 +283,22 @@ rfStatus_t trx16BitRegAccess(uint8_t accessType, uint8_t extAddr, uint8_t regAdd
 {
     uint8_t readValue;
 
-    SPI_Cmd(SPI1, ENABLE);
+    SPI_Cmd(CC1120_SPI, ENABLE);
 
     /* Pull CS_N low and wait for SO to go low before communication starts */
-    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);       // CS = 0
+    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);       // CS = 0
     while((GPIO_ReadInputDataBit(GPIO_Port_CC1120_SPI, GPIO_Pin_CC1120_MISO) & Bit_SET));
 
     /* send extended address byte with access type bits set */
-    readValue = CC1120_SPIReadWriteByte(SPI1,accessType|extAddr);  
+    readValue = CC1120_SPIReadWriteByte(CC1120_SPI,accessType|extAddr);  
 
-    CC1120_SPIReadWriteByte(SPI1,regAddr); 
+    CC1120_SPIReadWriteByte(CC1120_SPI,regAddr); 
     /* Communicate len number of bytes */
     trxReadWriteBurstSingle(accessType|extAddr,pData,len);
 
-    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);       // CS = 0
+    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);       // CS = 0
 
-    SPI_Cmd(SPI1, DISABLE);
+    SPI_Cmd(CC1120_SPI, DISABLE);
 
     /* return the status byte value */
     return(readValue);
@@ -281,18 +318,18 @@ rfStatus_t trxSpiCmdStrobe(uint8_t cmd)
 {
     uint8_t rc;
     
-    SPI_Cmd(SPI1, ENABLE);
+    SPI_Cmd(CC1120_SPI, ENABLE);
 
     /* Pull CS_N low and wait for SO to go low before communication starts */
-    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);       // CS = 0
+    GPIO_ResetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);       // CS = 0
     while((GPIO_ReadInputDataBit(GPIO_Port_CC1120_SPI, GPIO_Pin_CC1120_MISO) & Bit_SET));
     
     /* send extended address byte with access type bits set */
-    rc = CC1120_SPIReadWriteByte(SPI1,cmd);  
+    rc = CC1120_SPIReadWriteByte(CC1120_SPI,cmd);  
 
-    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_4);       // CS = 0
+    GPIO_SetBits(GPIO_Port_CC1120_NSS,GPIO_Pin_CC1120_NSS);       // CS = 0
 
-    SPI_Cmd(SPI1, DISABLE);
+    SPI_Cmd(CC1120_SPI, DISABLE);
 
     return(rc);
 }
@@ -348,7 +385,7 @@ rfStatus_t cc112xSpiWriteReg(uint16_t addr, uint8_t *pData, uint8_t len)
     uint8_t tempExt  = (uint8_t)(addr>>8);
     uint8_t tempAddr = (uint8_t)(addr & 0x00FF);
     uint8_t rc;
-
+    
     /* Checking if this is a FIFO access - returns chip not ready */
     if((CC112X_SINGLE_TXFIFO<=tempAddr)&&(tempExt==0)) return STATUS_CHIP_RDYn_BM;
 
@@ -359,9 +396,9 @@ rfStatus_t cc112xSpiWriteReg(uint16_t addr, uint8_t *pData, uint8_t len)
     }
     else if (tempExt == 0x2F)
     {
-        rc = trx16BitRegAccess((RADIO_BURST_ACCESS|RADIO_WRITE_ACCESS),tempExt,tempAddr,pData,len);
+        rc = trx16BitRegAccess((RADIO_BURST_ACCESS|RADIO_WRITE_ACCESS),tempExt,tempAddr,pData,len); 
     }
-    
+  
     return (rc);
 }
 
