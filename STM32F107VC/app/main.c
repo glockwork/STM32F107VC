@@ -40,7 +40,7 @@
   */
 int main(void)
 {
-    uint8_t wr_temp = 20;
+    uint8_t wr_temp = 40;
     uint8_t rd_temp = 0;
     
     /* Initialize COM port(USART) available onboard */     
@@ -55,10 +55,12 @@ int main(void)
     GPIO_SetBits(GPIO_Port_CC1120_RESET, GPIO_Pin_CC1120_RESET);
     rf_PowerUpReset();
     registerConfig();
+#ifdef CC1120_DEBUG
+    printf("registerConfiging OK...\r\n");   
+#endif
     /* Infinite loop */
     while (1)
     {
-//        printf("Hello!I am STM32107VC...\r\n");
         cc112xSpiWriteReg(CC112X_PKT_LEN, &wr_temp, 1);
         delay_ms(5);
         cc112xSpiReadReg(CC112X_PKT_LEN, &rd_temp, 1);

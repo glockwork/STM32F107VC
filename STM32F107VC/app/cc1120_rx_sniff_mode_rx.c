@@ -178,11 +178,13 @@ void registerConfig(void)
     for(i = 0;i < (sizeof(preferredSettings)/sizeof(registerSetting_t)); i++) 
 	{
         writeByte = preferredSettings[i].data;
-printf("registerConfiging,%d...\r\n",i);       
+#ifdef CC1120_DEBUG
+        printf("registerConfiging,%d...\r\n",i);   
+#endif        
         cc112xSpiWriteReg(preferredSettings[i].addr, &writeByte, 1);
         delay_us(1000);
     }
-
+  
 	// Calibrate radio according to errata
     manualCalibration();
 }
