@@ -32,7 +32,28 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
+/* GPIOA Periph clock enable */
+/*******************************************************************************
+* Function Name  : MCO_OutPutLSE
+* Description    : MCOÊä³öLSE 32.768KHz
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void MCO_OutPut(void)
+{
+    GPIO_InitTypeDef        GPIO_InitStructure;
 
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
+
+    /* Configure PA8 in MCO output mode */
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    RCC_MCOConfig(RCC_MCO_SYSCLK);   
+}
 /**
   * @brief  Main program.
   * @param  None
@@ -58,14 +79,17 @@ int main(void)
 #ifdef CC1120_DEBUG
     printf("registerConfiging OK...\r\n");   
 #endif
+    MCO_OutPut();
     /* Infinite loop */
     while (1)
     {
-        cc112xSpiWriteReg(CC112X_PKT_LEN, &wr_temp, 1);
+//        cc112xSpiWriteReg(CC112X_PKT_LEN, &wr_temp, 1);
+        GPIO_ResetBits(GPIO_Port_CC1120_RESET, GPIO_Pin_CC1120_RESET);
         delay_ms(5);
-        cc112xSpiReadReg(CC112X_PKT_LEN, &rd_temp, 1);
+//        cc112xSpiReadReg(CC112X_PKT_LEN, &rd_temp, 1);
+        GPIO_SetBits(GPIO_Port_CC1120_RESET, GPIO_Pin_CC1120_RESET);
         delay_ms(5);
-        printf("rd_temp = %d...\r\n",rd_temp);
+//        printf("rd_temp = %d...\r\n",rd_temp);
     }
 }
 
